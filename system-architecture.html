@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="留学エージェント専用アプリの開発環境アーキテクチャー：VS Code、Codex、GitHub、Google Driveの役割と情報の流れ。" />
+  <title>Study Abroad Platform | Development Architecture</title>
+  <style>
+    :root { color-scheme:dark; --bg:#090f1b; --card:#121d30; --card2:#17243a; --line:#344662; --text:#f3f7ff; --muted:#a9b7ca; --blue:#73b6ff; --green:#70e0bc; --violet:#c4a3ff; --gold:#ffcf85; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 50% -10%,#1a3459 0%,transparent 38%),var(--bg); color:var(--text); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif; }
+    .shell { max-width:1200px; margin:auto; padding:54px 28px 70px; }
+    .eyebrow { font-size:12px; letter-spacing:.2em; color:var(--green); font-weight:750; text-transform:uppercase; }
+    h1 { font-size:clamp(30px,4vw,48px); line-height:1.22; letter-spacing:-.035em; margin:12px 0 18px; }
+    .intro { max-width:850px; color:var(--muted); font-size:16px; margin-bottom:32px; }
+    .pill { display:inline-flex; align-items:center; border:1px solid #344b68; padding:6px 12px; border-radius:999px; color:#b4c7e0; font-size:12px; margin:0 6px 8px 0; }
+    .diagram { background:linear-gradient(145deg,#121e31,#101929); border:1px solid #30425d; border-radius:24px; padding:30px 26px 24px; box-shadow:0 20px 70px #0005; }
+    .diagram-header { display:flex; justify-content:space-between; flex-wrap:wrap; align-items:start; gap:12px; margin-bottom:28px; }
+    .diagram h2,.section h2 { font-size:20px; letter-spacing:-.02em; margin:0; }
+    .subtle { color:var(--muted); font-size:13px; margin:4px 0 0; }
+    .legend { display:flex; gap:14px; align-items:center; flex-wrap:wrap; color:var(--muted); font-size:12px; }
+    .legend i { display:inline-block; width:24px; border-top:2px solid var(--green); margin-right:6px; vertical-align:middle; }
+    .legend .dashed { border-top-style:dashed; border-color:var(--gold); }
+    .workspace { display:grid; grid-template-columns:minmax(0,1fr) 86px minmax(0,1fr); gap:10px; align-items:stretch; }
+    .node { background:#17243a; border:1px solid #48617d; border-radius:17px; padding:22px; position:relative; min-width:0; }
+    .node.vscode { border-color:#4b98e6; } .node.codex { border-color:#5abf9f; } .node.github { border-color:#a68de5; } .node.drive { border-color:#efbe73; }
+    .node-top { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+    .symbol { width:43px; height:43px; display:grid; place-items:center; border-radius:12px; flex-shrink:0; font-weight:850; font-size:18px; background:#253b58; color:var(--blue); }
+    .codex .symbol { color:var(--green); background:#193d3b; } .github .symbol { color:var(--violet); background:#322d4b; } .drive .symbol { color:var(--gold); background:#443b2a; }
+    .node h3 { font-size:21px; margin:0; } .node .role { font-size:12px; font-weight:800; letter-spacing:.05em; color:#c6d5e9; margin-bottom:8px; }
+    .node p { color:var(--muted); margin:0 0 12px; } .node ul { margin:0; padding-left:20px; } .node li { margin:4px 0; }
+    .connector { display:flex; align-items:center; justify-content:center; flex-direction:column; min-width:0; gap:8px; color:#b9ddfc; font-size:11px; text-align:center; }
+    .connector .double { font-size:31px; font-weight:400; color:var(--green); line-height:1; }
+    .centerline { height:70px; display:grid; place-items:center; text-align:center; color:#b4c9df; font-size:12px; }
+    .centerline .down { font-size:28px; color:#a6b6dd; display:block; line-height:1.15; }
+    .storage { display:grid; grid-template-columns:minmax(0,1fr) 86px minmax(0,1fr); gap:10px; }
+    .sync { border:1px dashed #a38250; border-radius:12px; align-self:center; text-align:center; color:var(--gold); padding:13px 5px; font-size:11px; line-height:1.45; }
+    .sync strong { font-size:18px; display:block; }
+    .path { margin-top:22px; background:#0e1929; border:1px solid #293c55; border-radius:12px; padding:14px 18px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; color:#c8d5e6; }
+    .path strong { color:white; } .path .arrow { color:var(--green); font-weight:800; }
+    .section { margin-top:40px; }
+    .cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:15px; margin-top:18px; }
+    .info { background:#111d30; border:1px solid #30425d; border-radius:16px; padding:22px; }
+    .info h3 { margin:0 0 9px; font-size:17px; } .info p { margin:0; color:var(--muted); }
+    .tag { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; padding:2px 6px; background:#22334c; border-radius:5px; color:#c2e4ff; font-size:12px; }
+    .structure { background:#0c1727; border:1px solid #30425d; border-radius:16px; padding:20px 24px; white-space:pre-wrap; overflow-wrap:anywhere; color:#d3e3f5; line-height:1.9; font:13px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace; margin:18px 0 0; }
+    .alert { border-left:3px solid var(--gold); background:#282337; border-radius:0 10px 10px 0; padding:15px 18px; margin-top:20px; color:#f4e8d4; }
+    .footer { margin-top:30px; color:#8297b1; font-size:12px; display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+    @media(max-width:700px) { .shell{padding:28px 16px 48px;} .diagram{padding:20px 14px;} .workspace,.storage { grid-template-columns:1fr; } .connector{min-height:48px;} .connector .double{transform:rotate(90deg);} .centerline{height:50px;} .sync{padding:8px;} .cards{grid-template-columns:1fr;} .node{padding:18px;} }
+    @media print { :root{color-scheme:light;} body{background:white;color:#122033;} .shell{max-width:none;padding:15px;} .diagram,.info,.node,.structure{box-shadow:none;break-inside:avoid;} .diagram{background:#f4f7fc;} .node,.info{background:#eef3f9;color:#15253b;} .node p,.info p,.intro,.subtle,.node .role{color:#4a5a6b;} .node h3,.diagram h2,.section h2{color:#122033;} .centerline,.legend{color:#34445a;} .structure{background:#eff3fa;color:#1b2b44;} .alert{background:#fff7e8;color:#5b431d;} .path{background:#e8f4ef;color:#15283a;} .path strong{color:#15283a;} }
+  </style>
+</head>
+<body>
+<main class="shell">
+  <div class="eyebrow">System Blueprint / v1.0</div>
+  <h1>留学エージェント専用アプリ<br>開発システムアーキテクチャー</h1>
+  <p class="intro">VS Codeを作業画面、CodexをAIエンジニア、GitHubをコード・開発ルールの管理基盤、Google Driveを業務ドキュメントの管理基盤として活用する。</p>
+  <div><span class="pill">Development Environment</span><span class="pill">GitHub First Commit</span><span class="pill">Documentation & Skills</span></div>
+  <section class="diagram" aria-label="開発システムの構成図">
+    <div class="diagram-header"><div><h2>01 / ツールとデータの関係</h2><p class="subtle">実線：日常的な操作・アクセス ／ 破線：必要に応じて行う反映</p></div><div class="legend"><span><i></i>作業・連携</span><span><i class="dashed"></i>手動または別途自動化</span></div></div>
+    <div class="workspace">
+      <article class="node vscode"><div class="node-top"><span class="symbol">&lt;/&gt;</span><h3>VS Code</h3></div><div class="role">DEVELOPMENT WORKSPACE</div><p>人間が開発を操作・確認する場所</p><ul><li>Codex拡張を使って会話</li><li>コードや差分をレビュー</li><li>ローカルのファイルを開く</li></ul></article>
+      <div class="connector"><span class="double">↔</span><span>指示・編集<br>レビュー</span></div>
+      <article class="node codex"><div class="node-top"><span class="symbol">✦</span><h3>Codex</h3></div><div class="role">AI CODING AGENT</div><p>AIエンジニアとして開発作業を実行</p><ul><li>要件を読み、実装方針を提案</li><li>ファイル編集・コード生成</li><li>テスト・修正・Skills利用</li></ul></article>
+    </div>
+    <div class="centerline"><div>↓ ローカルGit / リポジトリの参照・更新<span class="down">⇅</span></div><div>↓ 仕様書の確認・更新<span class="down">⇅</span></div></div>
+    <div class="storage">
+      <article class="node github"><div class="node-top"><span class="symbol">{ }</span><h3>GitHub</h3></div><div class="role">SOURCE & VERSION CONTROL</div><p>コードと開発用ドキュメントの正式な管理元</p><ul><li>ソースコードと変更履歴</li><li><span class="tag">AGENTS.md</span>・Codex Skills</li><li>技術仕様・Issue・Pull Request</li></ul></article>
+      <div class="sync"><strong>⇄</strong>文書の参照<br>・転記・連携<br><small>※自動ではない</small></div>
+      <article class="node drive"><div class="node-top"><span class="symbol">▤</span><h3>Google Drive</h3></div><div class="role">BUSINESS DOCUMENT HUB</div><p>ビジネス側の要件・資料の正式な管理元</p><ul><li>要件定義・業務フロー</li><li>運用ルール・議事録</li><li>決定事項・参考資料</li></ul></article>
+    </div>
+    <div class="path"><strong>基本フロー</strong><span>要件を決定</span><span class="arrow">→</span><span>Driveに記録</span><span class="arrow">→</span><span>GitHubの開発仕様・Skillsを更新</span><span class="arrow">→</span><span>Codexで実装</span><span class="arrow">→</span><span>GitHubにコミット</span></div>
+  </section>
+
+  <section class="section"><h2>02 / 管理責任の切り分け</h2><div class="cards">
+    <div class="info"><h3>🧑‍💻 VS Code — 操作画面</h3><p>ローカルのプロジェクトを開き、Codex拡張に自然言語で依頼。実装結果を確認する。VS Codeが必須というわけではないが、今回の標準作業環境とする。</p></div>
+    <div class="info"><h3>✦ Codex — AIエンジニア</h3><p>コードを作成・変更し、テストを実行する。プロジェクトのルールは <span class="tag">AGENTS.md</span> と Skills から読み込む。人間の承認が必要な操作は確認する。</p></div>
+    <div class="info"><h3>⌘ GitHub — 技術の正本</h3><p>コード、開発ルール、技術仕様、SkillsをGitで履歴管理。レビュー後に変更を確定し、どの仕様で実装したかを追跡可能にする。</p></div>
+    <div class="info"><h3>📄 Google Drive — 業務の正本</h3><p>サービスの目的、要件、業務フロー、会議の決定を管理。GitHub側に必要な技術要件を反映する。機密情報や個人情報は公開リポジトリにコピーしない。</p></div>
+  </div></section>
+
+  <section class="section"><h2>03 / GitHub初回コミットの推奨構成</h2>
+<pre class="structure">study-abroad-platform/
+├── README.md                  # プロジェクト概要 / 開発の入口
+├── AGENTS.md                  # Codex向け共通開発ルール
+├── docs/
+│   ├── system-architecture.html  # このアーキテクチャー図
+│   ├── technical-spec.md         # 技術仕様（GitHub側の正本）
+│   └── documentation-index.md    # Drive文書へのリンク一覧
+├── .agents/
+│   └── skills/                 # リポジトリ共有のCodex Skills
+│       └── README.md
+└── src/                        # アプリ実装（開発開始後）</pre>
+    <div class="alert"><strong>重要：</strong>この図は「運用の設計案」です。GitHubとGoogle Driveの双方向同期、Drive文書のCodexへの読み込み、Skillsの自動登録は、最初から自動で行われるわけではありません。必要な認証・連携・更新手順を後で実装します。また、同じ文書の二重管理を避けるため、種類ごとに「正本」を決めます。</div>
+  </section>
+  <section class="section"><h2>04 / 初期運用ルール</h2><div class="cards">
+    <div class="info"><h3>01 / 仕様決定</h3><p>業務要件はDriveで確定し、開発に必要な内容をGitHubの技術仕様・Issueへ反映する。</p></div>
+    <div class="info"><h3>02 / Skills更新</h3><p>繰り返し使う開発手順はリポジトリ内の <span class="tag">.agents/skills/</span> で管理し、変更履歴を残す。</p></div>
+    <div class="info"><h3>03 / コード変更</h3><p>Codexが変更を実施したら、VS Codeで差分を確認。テスト後にGitHubへコミットする。</p></div>
+    <div class="info"><h3>04 / 情報保護</h3><p>学生の氏名、連絡先、出願資料などの個人情報はGitHubの公開領域に保存しない。権限を明確にする。</p></div>
+  </div></section>
+  <footer class="footer"><span>Study Abroad Platform · Development Architecture</span><span>Version 1.0 · 2026-11-22 · Initial repository document</span></footer>
+</main>
+</body>
+</html>
